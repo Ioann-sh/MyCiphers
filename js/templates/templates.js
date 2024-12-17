@@ -51,13 +51,13 @@ const templates = {
 
     'vizener': `
         <div id="vizener">
-            <h2 id="cipher-title">Шифр Виженера</h2>
+            <h2 id="cipher-title">Шифр Виженера (eng)</h2>
 
             <label for="message">Введите сообщение:</label>
-            <input type="text" id="message" placeholder="Сообщение" value="ПРИВЕТ"/>
+            <input type="text" id="message" placeholder="Сообщение" value="ilovedyouandmylovemaystillbetheredeepinmysoulremainstostayaglowthatshouldnotcauseyouanymoredespairidonotwanttohurtyouanymoreilovedyouunrequitedinstillwonderthroughboutsofjealousyanddiffidenceilovedyousosincerelyandtendergodblessyouwithsuchloveofsomeoneelse"/>
 
             <label for="message">Введите ключ:</label>
-            <input type="text" id="key" placeholder="Ключ" value="ВИЖЕНЕР"/>
+            <input type="text" id="key" placeholder="Ключ" value="pushkin"/>
             
             <button onclick="encrypt('vizener')">Зашифровать</button>
             <button onclick="decrypt('vizener')">Расшифровать</button>

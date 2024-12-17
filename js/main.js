@@ -79,8 +79,7 @@ function hack(currentCipher) {
     } else if (currentCipher === 'vizener'){
         
         results = vizenerHack(text)
-            .map(item => `Ключ ${item.key}: ${item.text}`)
-            .join('\n');
+
     }
 
     document.getElementById('result').innerText = `Возможные расшифровки:\n${results}`;

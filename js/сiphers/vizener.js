@@ -1,163 +1,126 @@
-var russianAlphabet = [
-    "А", "Б", "В", "Г", "Д", "Е", "Ё", "Ж", "З", "И", "Й", "К", "Л", "М", "Н", "О", "П", "Р", "С", "Т", "У",
-    "Ф", "Х", "Ц", "Ч", "Ш", "Щ", "Ъ", "Ы", "Ь", "Э", "Ю", "Я"
+const alphabet = Array.from('abcdefghijklmnopqrstuvwxyz');
+const MAX_KEY_LENGTH_GUESS = 20;
+const ENGLISH_LETTER_FREQUENCIES = [
+    0.08167,
+    0.01492,
+    0.02782,
+    0.04253,
+    0.12702,
+    0.02228,
+    0.02015,
+    0.06094,
+    0.06966,
+    0.00153,
+    0.00772,
+    0.04025,
+    0.02406,
+    0.06749,
+    0.07507,
+    0.01929,
+    0.00095,
+    0.05987,
+    0.06327,
+    0.09056,
+    0.02758,
+    0.00978,
+    0.0236,
+    0.0015,
+    0.01974,
+    0.00074,
 ];
 
-var frequencyArray = [
-    { char: 'О', count: '0.1097' },
-    { char: 'Е', count: '0.08450' },
-    { char: 'А', count: '0.0801' },
-    { char: 'И', count: '0.0735' },
-    { char: 'Н', count: '0.0670' },
-    { char: 'Т', count: '0.0626' },
-    { char: 'С', count: '0.0547' },
-    { char: 'Р', count: '0.0473' },
-    { char: 'В', count: '0.0454' },
-    { char: 'Л', count: '0.0440' },
-    { char: 'К', count: '0.0349' },
-    { char: 'М', count: '0.0321' },
-    { char: 'Д', count: '0.0298' },
-    { char: 'П', count: '0.0281' },
-    { char: 'У', count: '0.0262' },
-    { char: 'Я', count: '0.0201' },
-    { char: 'Ы', count: '0.0190' },
-    { char: 'Ь', count: '0.0174' },
-    { char: 'Г', count: '0.0170' },
-    { char: 'З', count: '0.0165' },
-    { char: 'Б', count: '0.0159' },
-    { char: 'Ч', count: '0.0144' },
-    { char: 'Й', count: '0.0121' },
-    { char: 'Х', count: '0.0097' },
-    { char: 'Ж', count: '0.0094' },
-    { char: 'Ш', count: '0.0073' },
-    { char: 'Ю', count: '0.0064' },
-    { char: 'Ц', count: '0.0048' },
-    { char: 'Щ', count: '0.0036' },
-    { char: 'Э', count: '0.0032' },
-    { char: 'Ф', count: '0.0026' },
-    { char: 'Ё', count: '0.0004' },
-    { char: 'Ъ', count: '0.0003' }
-];
+function calculateIndexOfCoincidence(text){
+    const textLength = text.length;
+    const frequencies = alphabet.map((letter) => text.split(letter).length - 1);
+    const frequencySum = frequencies.reduce((sum, count) => sum + count * (count - 1), 0);
+    return frequencySum / (textLength * (textLength - 1));
+};
 
-var table = [[...russianAlphabet.slice(russianAlphabet.length - 1), ...russianAlphabet.slice(0, russianAlphabet.length - 1)]];
-const length = russianAlphabet.length;
-for (let i = 0; i < length; i++) {
-    const row = [...russianAlphabet.slice(i), ...russianAlphabet.slice(0, i)];
-    table.push(row);
-}
+function estimateKeyLength(text){
+    const icValues = Array.from({ length: MAX_KEY_LENGTH_GUESS }, (_, guess) => {
+        const guessLength = guess + 1;
+        const averageIC = Array.from({ length: guessLength }, (_, i) => {
+            const sequence = Array.from(text).filter((_, index) => index % guessLength === i).join('');
+            return calculateIndexOfCoincidence(sequence);
+        }).reduce((sum, ic) => sum + ic, 0);
 
-function vizenerEncrypt(text, key) {
-
-    const arrayOfChar = [];
-    const specialCharacters = [];
-    const currentText = text.toUpperCase();
-
-    currentText.split('').forEach((char, i) => {
-        const index = russianAlphabet.indexOf(char);
-        if (index !== -1) {
-            arrayOfChar.push(char);
-        } else {
-            specialCharacters.push({ char, index: i });
-        }
+        return averageIC / guessLength;
     });
 
-    const blocks = [];
-    for (let i = 0; i < arrayOfChar.length; i += key.length) {
-        blocks.push(arrayOfChar.slice(i, i + key.length));
-    }
+    const sortedICValues = [...icValues].sort((a, b) => b - a);
+    const bestGuess = icValues.indexOf(sortedICValues[0]) + 1;
+    const secondBestGuess = icValues.indexOf(sortedICValues[1]) + 1;
 
-    const encryptedBlocks = blocks.map(block =>
-        block.map((letter, index) => {
-            const keyLetter = key[index % key.length].toUpperCase();
-            const keyRow = table[0].indexOf(keyLetter);
+    return bestGuess % secondBestGuess === 0 ? secondBestGuess : bestGuess;
+};
 
-            for (let row = 1; row < table.length; row++) {
-                if (table[row][0] === letter) {
-                    return table[row][keyRow];
-                }
-            }
-            return letter;
-        })
-    );
+function analyzeFrequency(sequence){
+    const chiSquareds = alphabet.map((_, shift) => {
+        const shiftedSequence = sequence
+            .split('')
+            .map((char) => alphabet[(alphabet.indexOf(char) - shift + alphabet.length) % alphabet.length]);
 
-    result = encryptedBlocks.map(block => block.join('')).join('');
-    return result
+        const observedFrequencies = alphabet.map(
+            (letter) => shiftedSequence.filter((char) => char === letter).length / sequence.length
+        );
+
+        return observedFrequencies.reduce((chiSquared, observed, index) => {
+            const expected = ENGLISH_LETTER_FREQUENCIES[index];
+            return chiSquared + Math.pow(observed - expected, 2) / expected;
+        }, 0);
+    });
+
+    return alphabet[chiSquareds.indexOf(Math.min(...chiSquareds))];
+};
+
+function extractKey(text, keyLength){
+    return Array.from({ length: keyLength }, (_, i) => {
+        const sequence = Array.from(text).filter((_, index) => index % keyLength === i).join('');
+        return analyzeFrequency(sequence);
+    }).join('');
+};
+//ЗАШИФРОВКА
+function vizenerEncrypt(text, key) {
+
+    const inputText = text.toLowerCase().replace(/[^a-z]/g, '');
+    const encryptionKey = key.toLowerCase().replace(/[^a-z]/g, '');
+    const encoded = inputText.split('').map((char, index) => {
+        const keyShift = encryptionKey[index % encryptionKey.length].charCodeAt(0) - 97;
+        const charShift = char.charCodeAt(0) - 97;
+        return String.fromCharCode(((charShift + keyShift) % alphabet.length) + 97);
+    }).join('');
+
+    return encoded
+
 };
 
 function vizenerDecrypt(text, key) {
-    const arrayOfChar = [];
-    const specialCharacters = [];
+    const encodedMessage = text.toLowerCase();
+    const encryptionKey = key.toLowerCase().replace(/[^a-z]/g, '');
 
-    text.split('').forEach((char, i) => {
-        const index = russianAlphabet.indexOf(char);
-        if (index !== -1) {
-            arrayOfChar.push(char);
-        } else {
-            specialCharacters.push({ char, index: i });
-        }
-    });
+    const decoded = encodedMessage.split('').map((char, index) => {
+        const keyShift = encryptionKey[index % encryptionKey.length].charCodeAt(0) - 97;
+        const charShift = char.charCodeAt(0) - 97;
+        return String.fromCharCode(((charShift - keyShift + alphabet.length) % alphabet.length) + 97);
+    }).join('');
 
-    const blocks = [];
-    for (let i = 0; i < arrayOfChar.length; i += key.length) {
-        blocks.push(arrayOfChar.slice(i, i + key.length));
-    }
-
-    const decryptedBlocks = blocks.map(block =>
-        block.map((encryptedLetter, index) => {
-            const keyLetter = key[index % key.length].toUpperCase();
-            const keyRow = table[0].indexOf(keyLetter);
-
-            for (let row = 1; row < table.length; row++) {
-                if (table[row][keyRow] === encryptedLetter) {
-                    return table[row][0];
-                }
-            }
-            return encryptedLetter;
-        })
-    );
-
-    result = decryptedBlocks.map(block => block.join('')).join('');
-    return result
+    return decoded
 };
 
-function vizenerHack(text, syllableLength = 2) {
-    const possibleKeys = [];
-    const decryptedResults = [];
+function vizenerHack(text){
+    const keyLength = estimateKeyLength(text);
+    const derivedKey = extractKey(text, keyLength);
 
-    for (let i = 0; i < russianAlphabet.length; i++) {
-        for (let j = 0; j < russianAlphabet.length; j++) {
-            for (let k = 0; k < russianAlphabet.length; k++) {
-                const key = russianAlphabet[i] + russianAlphabet[j] + russianAlphabet[k];
-                possibleKeys.push(key); 
-            }
-        }
-    }
+    const result = text
+        .split('')
+        .map((char, index) => {
+            const charIndex = alphabet.indexOf(char);
+            if (charIndex === -1) return char;
 
-    for (let p = 0; p < possibleKeys.length; p++) {
-        const key = possibleKeys[p];
-        let decryptedText = '';
+            const keyShift = alphabet.indexOf(derivedKey[index % derivedKey.length]);
+            return alphabet[(charIndex - keyShift + alphabet.length) % alphabet.length];
+        })
+        .join('');
 
-
-        for (let i = 0; i < text.length; i++) {
-            const encryptedLetter = text[i];
-            const keyLetter = key[i % key.length].toUpperCase(); 
-            const keyRow = table[0].indexOf(keyLetter);
-
-
-            let decryptedLetter = encryptedLetter; 
-            for (let row = 1; row < table.length; row++) {
-                if (table[row][keyRow] === encryptedLetter) {
-                    decryptedLetter = table[row][0]; 
-                    break;
-                }
-            }
-            decryptedText += decryptedLetter;
-        }
-
-        decryptedResults.push({ key: key, text: decryptedText });
-    }
-
-    console.log('All possible results:', decryptedResults);
-    return decryptedResults;
-}
-
+    return result
+};
