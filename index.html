@@ -10,9 +10,9 @@
 
 <header>
     <button onclick="selectCipher('caesar')">Шифр Цезаря</button>
-    <button onclick="selectCipher('enigma')">Шифр Энигмы</button>
     <button onclick="selectCipher('vizener')">Шифр Виженера</button>
-    <button onclick="selectCipher()">Шифр 4</button>
+    <button onclick="selectCipher('gost')">Шифр ГОСТ 28147-89</button>
+    <button onclick="selectCipher('enigma')" disabled="true">Шифр 4</button>
 </header>
 
 <div id="cipher-container">
@@ -21,8 +21,8 @@
 <script src="js/main.js"></script>
 <script src="js/templates/templates.js"></script>
 <script src="js/сiphers/caesar.js"></script>
-<script src="js/сiphers/enigma.js"></script>
 <script src="js/сiphers/vizener.js"></script>
+<script src="js/сiphers/gost.js"></script>
 
 </body>
 </html>
