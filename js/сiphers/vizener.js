@@ -1,126 +1,87 @@
-const alphabet = Array.from('abcdefghijklmnopqrstuvwxyz');
-const MAX_KEY_LENGTH_GUESS = 20;
-const ENGLISH_LETTER_FREQUENCIES = [
-    0.08167,
-    0.01492,
-    0.02782,
-    0.04253,
-    0.12702,
-    0.02228,
-    0.02015,
-    0.06094,
-    0.06966,
-    0.00153,
-    0.00772,
-    0.04025,
-    0.02406,
-    0.06749,
-    0.07507,
-    0.01929,
-    0.00095,
-    0.05987,
-    0.06327,
-    0.09056,
-    0.02758,
-    0.00978,
-    0.0236,
-    0.0015,
-    0.01974,
-    0.00074,
+const ALPHABET = 'abcdefghijklmnopqrstuvwxyz';
+const ENGLISH_FREQUENCIES = [
+    0.08167, 0.01492, 0.02782, 0.04253, 0.12702, 0.02228, 0.02015, 0.06094, 0.06966, 0.00153,
+    0.00772, 0.04025, 0.02406, 0.06749, 0.07507, 0.01929, 0.00095, 0.05987, 0.06327, 0.09056,
+    0.02758, 0.00978, 0.0236, 0.0015, 0.01974, 0.00074
 ];
 
-function calculateIndexOfCoincidence(text){
-    const textLength = text.length;
-    const frequencies = alphabet.map((letter) => text.split(letter).length - 1);
-    const frequencySum = frequencies.reduce((sum, count) => sum + count * (count - 1), 0);
-    return frequencySum / (textLength * (textLength - 1));
-};
+function vizenerEncrypt(plaintext, key) {
+    // Убираем всё лишнее из текста и ключа
+    const sanitizedText = plaintext.toLowerCase().replace(/[^a-z]/g, '');
+    const sanitizedKey = key.toLowerCase().replace(/[^a-z]/g, '');
 
-function estimateKeyLength(text){
-    const icValues = Array.from({ length: MAX_KEY_LENGTH_GUESS }, (_, guess) => {
-        const guessLength = guess + 1;
-        const averageIC = Array.from({ length: guessLength }, (_, i) => {
-            const sequence = Array.from(text).filter((_, index) => index % guessLength === i).join('');
-            return calculateIndexOfCoincidence(sequence);
-        }).reduce((sum, ic) => sum + ic, 0);
+    // Сдвигаем каждую букву текста на значение буквы ключа
+    return sanitizedText.split('').map((char, index) => {
+        const keyShift = ALPHABET.indexOf(sanitizedKey[index % sanitizedKey.length]); // длина ключа бесконечна
+        const charIndex = ALPHABET.indexOf(char); // ищем букву в алфавите
+        return ALPHABET[(charIndex + keyShift + ALPHABET.length) % ALPHABET.length]; // сдвиг и циклический обход
+    }).join(''); // собираем строку назад
+}
 
-        return averageIC / guessLength;
-    });
+function vizenerDecrypt(ciphertext, key) {
+    // Убираем всё лишнее из ключа
+    const sanitizedKey = key.toLowerCase().replace(/[^a-z]/g, '');
 
-    const sortedICValues = [...icValues].sort((a, b) => b - a);
-    const bestGuess = icValues.indexOf(sortedICValues[0]) + 1;
-    const secondBestGuess = icValues.indexOf(sortedICValues[1]) + 1;
+    // Обратный сдвиг каждой буквы шифротекста на значение буквы ключа
+    return ciphertext.split('').map((char, index) => {
+        const keyShift = ALPHABET.indexOf(sanitizedKey[index % sanitizedKey.length]); // длина ключа бесконечна
+        const charIndex = ALPHABET.indexOf(char);
+        return ALPHABET[(charIndex - keyShift + ALPHABET.length) % ALPHABET.length]; // обратный сдвиг, чтобы вернуть букву
+    }).join(''); // собираем строку обратно
+}
 
-    return bestGuess % secondBestGuess === 0 ? secondBestGuess : bestGuess;
-};
+function vizenerHack(ciphertext) {
+    // Чистим текст, чтобы убрать лишние символы
+    const sanitizedText = ciphertext.toLowerCase().replace(/[^a-z]/g, '');
 
-function analyzeFrequency(sequence){
-    const chiSquareds = alphabet.map((_, shift) => {
-        const shiftedSequence = sequence
-            .split('')
-            .map((char) => alphabet[(alphabet.indexOf(char) - shift + alphabet.length) % alphabet.length]);
+    // Считаем индекс совпадений (IC)
+    const calculateIC = text => {
+        const letterCounts = Array.from(ALPHABET).map(letter => text.split(letter).length - 1); // считаем буквы
+        const numerator = letterCounts.reduce((sum, count) => sum + count * (count - 1), 0); // числитель для IC
+        return numerator / (text.length * (text.length - 1)); // делим, чтобы получить IC
+    };
 
-        const observedFrequencies = alphabet.map(
-            (letter) => shiftedSequence.filter((char) => char === letter).length / sequence.length
-        );
+    // Угадываем длину ключа на основе IC
+    const guessKeyLength = (text, maxKeyLength = 20) => {
+        const icValues = Array.from({ length: maxKeyLength }, (_, guess) => {
+            const segmentLength = guess + 1; // текущая догадка длины ключа
+            const avgIC = Array.from({ length: segmentLength }, (_, i) => {
+                const segment = text.split('').filter((_, index) => index % segmentLength === i).join(''); // делим на куски
+                return calculateIC(segment); // считаем IC для каждого куска
+            }).reduce((sum, ic) => sum + ic, 0) / segmentLength; // средний IC
+            return avgIC; // возвращаем, что получилось
+        });
+        return icValues.indexOf(Math.max(...icValues)) + 1; // берём длину с максимальным IC
+    };
 
-        return observedFrequencies.reduce((chiSquared, observed, index) => {
-            const expected = ENGLISH_LETTER_FREQUENCIES[index];
-            return chiSquared + Math.pow(observed - expected, 2) / expected;
-        }, 0);
-    });
+    // Определяем букву ключа по минимальному хи-квадрату
+    const determineKeyCharacter = segment => {
+        const chiSquares = Array.from(ALPHABET).map((_, shift) => {
+            const shiftedSegment = segment.split('').map(
+                char => ALPHABET[(ALPHABET.indexOf(char) - shift + ALPHABET.length) % ALPHABET.length] // сдвигаем назад
+            );
+            const observed = Array.from(ALPHABET).map(
+                letter => shiftedSegment.filter(ch => ch === letter).length / segment.length // частоты букв
+            );
+            return observed.reduce((chiSquare, freq, idx) => {
+                const expected = ENGLISH_FREQUENCIES[idx]; // частоты букв в английском
+                return chiSquare + Math.pow(freq - expected, 2) / expected; // рассчитываем хи-квадрат
+            }, 0);
+        });
+        return ALPHABET[chiSquares.indexOf(Math.min(...chiSquares))]; // буква с минимальным хи-квадрат
+    };
 
-    return alphabet[chiSquareds.indexOf(Math.min(...chiSquareds))];
-};
+    // Угадываем длину ключа и сам ключ
+    const keyLength = guessKeyLength(sanitizedText); // угадываем длину ключа
+    const key = Array.from({ length: keyLength }, (_, i) => {
+        const segment = sanitizedText.split('').filter((_, index) => index % keyLength === i).join(''); // кусок текста
+        return determineKeyCharacter(segment); // буква ключа для этого куска
+    }).join(''); // собираем ключ
 
-function extractKey(text, keyLength){
-    return Array.from({ length: keyLength }, (_, i) => {
-        const sequence = Array.from(text).filter((_, index) => index % keyLength === i).join('');
-        return analyzeFrequency(sequence);
-    }).join('');
-};
-//ЗАШИФРОВКА
-function vizenerEncrypt(text, key) {
-
-    const inputText = text.toLowerCase().replace(/[^a-z]/g, '');
-    const encryptionKey = key.toLowerCase().replace(/[^a-z]/g, '');
-    const encoded = inputText.split('').map((char, index) => {
-        const keyShift = encryptionKey[index % encryptionKey.length].charCodeAt(0) - 97;
-        const charShift = char.charCodeAt(0) - 97;
-        return String.fromCharCode(((charShift + keyShift) % alphabet.length) + 97);
-    }).join('');
-
-    return encoded
-
-};
-
-function vizenerDecrypt(text, key) {
-    const encodedMessage = text.toLowerCase();
-    const encryptionKey = key.toLowerCase().replace(/[^a-z]/g, '');
-
-    const decoded = encodedMessage.split('').map((char, index) => {
-        const keyShift = encryptionKey[index % encryptionKey.length].charCodeAt(0) - 97;
-        const charShift = char.charCodeAt(0) - 97;
-        return String.fromCharCode(((charShift - keyShift + alphabet.length) % alphabet.length) + 97);
-    }).join('');
-
-    return decoded
-};
-
-function vizenerHack(text){
-    const keyLength = estimateKeyLength(text);
-    const derivedKey = extractKey(text, keyLength);
-
-    const result = text
-        .split('')
-        .map((char, index) => {
-            const charIndex = alphabet.indexOf(char);
-            if (charIndex === -1) return char;
-
-            const keyShift = alphabet.indexOf(derivedKey[index % derivedKey.length]);
-            return alphabet[(charIndex - keyShift + alphabet.length) % alphabet.length];
-        })
-        .join('');
-
-    return result
-};
+    // Дешифруем текст
+    return sanitizedText.split('').map((char, index) => {
+        const keyShift = ALPHABET.indexOf(key[index % key.length]); // длина ключа
+        const charIndex = ALPHABET.indexOf(char);
+        return ALPHABET[(charIndex - keyShift + ALPHABET.length) % ALPHABET.length]; // дешифруем каждую букву
+    }).join(''); // собираем текст обратно
+}

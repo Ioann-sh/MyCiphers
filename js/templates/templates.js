@@ -56,10 +56,10 @@ const templates = {
             <p>Реализация шифра Виженера. Лабораторна работа №2.</p>
             <label for="message">Введите сообщение:</label>
             <input type="text" id="message" placeholder="Сообщение" value="ilovedyouandmylovemaystillbetheredeepinmysoulremainstostayaglowthatshouldnotcauseyouanymoredespairidonotwanttohurtyouanymoreilovedyouunrequitedinstillwonderthroughboutsofjealousyanddiffidenceilovedyousosincerelyandtendergodblessyouwithsuchloveofsomeoneelse"/>
-
+            
             <label for="message">Введите ключ:</label>
             <input type="text" id="key" placeholder="Ключ" value="pushkin"/>
-            
+
             <button onclick="encrypt('vizener')">Зашифровать</button>
             <button onclick="decrypt('vizener')">Расшифровать</button>
             <button onclick="hack('vizener')">Взломать</button>
